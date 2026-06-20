@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>さんすうカード</title>
+  <style>
+    /* =======================================================
+       全体設定
+       ======================================================= */
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+    body {
+      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+      background-color: #FFFDE7;
+      color: #333333;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ヘッダーエリア */
+    header { background-color: #1565C0; color: white; padding: 1vh 2vw; display: flex; justify-content: space-between; align-items: center; height: 8vh; flex-shrink: 0; }
+    header h1 { font-size: 3.5vh; }
+    .header-buttons { display: flex; gap: 10px; }
+    .btn-header { background-color: #FF8F00; color: white; border: none; padding: 0.5vh 1.5vw; font-size: 2vh; border-radius: 5px; cursor: pointer; font-weight: bold; }
+    .btn-header:hover { background-color: #FFB300; }
+
+    /* メインコンテンツエリア */
+    main { 
+      flex: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; 
+      padding: 2vh 2vw; height: 92vh; position: relative; 
+      overflow-y: auto; 
+    }
+    
+    .screen { 
+      display: none; width: 100%; max-width: 100%; min-height: 100%; 
+      flex-direction: column; justify-content: center; align-items: center; gap: 1.5vh; 
+      padding-bottom: 2vh;
+    }
+    .screen.active { display: flex; }
+
+    h2 { font-size: 4vh; text-align: center; color: #1565C0; margin-top: 0; }
+    h3 { font-size: 3.5vh; color: #333; margin-bottom: 1vh; }
+
+    /* =======================================================
+       ボタンとグリッド（各種選択画面用）
+       ======================================================= */
+    .btn-large {
+      background-color: #ffffff; border: 4px solid #1565C0; color: #1565C0; 
+      padding: 2vh 2vw; font-size: 3.2vh; 
+      border-radius: 15px; cursor: pointer; font-weight: bold; transition: all 0.2s; box-shadow: 0 6px #1565C0; text-align: center;
+    }
+    .btn-large:active { transform: translateY(6px); box-shadow: 0 0px #1565C0; }
+    .btn-large.orange { border-color: #FF8F00; color: #FF8F00; box-shadow: 0 6px #FF8F00; }
+    .btn-large.orange:active { box-shadow: 0 0px #FF8F00; }
+    .btn-large.red { border-color: #e53935; color: #e53935; box-shadow: 0 6px #e53935; }
+    .btn-large.red:active { box-shadow: 0 0px #e53935; }
+    .btn-sub-text { font-size: 2.2vh; font-weight: normal; display: block; margin-top: 0.5vh; }
+
+    .grid-col-1 { display: flex; flex-direction: column; gap: 1.5vh; width: 90%; max-width: 900px; }
+    .grid-col-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2vw; width: 90%; max-width: 1200px; margin-bottom: 3vh; }
+
+    /* タイムアタック ルール設定画面用 */
+    .ta-rule-container { width: 95%; max-width: 1000px; display: flex; flex-direction: column; gap: 2vh; }
+    .ta-section { background: white; border: 3px solid #cfd8dc; border-radius: 15px; padding: 1.5vh; text-align: center; }
+    .ta-btn-group { display: flex; justify-content: center; flex-wrap: wrap; gap: 1vw; }
+    .btn-time { background: #eceff1; border: 3px solid #90a4ae; font-size: 2.5vh; font-weight: bold; padding: 1vh 2vw; border-radius: 10px; cursor: pointer; color: #37474f; }
+    .btn-time:hover { background: #cfd8dc; }
+
+    /* 問題数設定エリア */
+    .q-count-settings { display: flex; align-items: center; justify-content: center; gap: 1.5vw; background: #e3f2fd; padding: 1vh 2vw; border-radius: 12px; margin-bottom: 0.5vh; width: 90%; max-width: 900px; }
+    .q-count-settings span { font-size: 2.5vh; font-weight: bold; color: #1565C0; }
+    .btn-q-count { background: white; border: 3px solid #90caf9; font-size: 2.5vh; font-weight: bold; padding: 0.8vh 1.5vw; border-radius: 8px; cursor: pointer; color: #1565C0; }
+    .btn-q-count.selected { background: #1565C0; color: white; border-color: #1565C0; }
+
+    /* =======================================================
+       プレイ画面
+       ======================================================= */
+    .status-bar { display: flex; justify-content: space-between; align-items: center; width: 100%; background: white; padding: 0.8vh 2vw; border-radius: 10px; border: 3px solid #b0bec5; font-size: 2.5vh; flex: 0 0 auto; }
+    .character-box { display: flex; align-items: center; gap: 10px; font-weight: bold; }
+    .char-emoji { font-size: 4vh; }
+    .combo-box { color: #d84315; font-weight: bold; }
+
+    /* タイマーバー */
+    .timer-container { width: 100%; height: 3vh; background: #e0e0e0; border-radius: 1.5vh; margin-top: 1vh; overflow: hidden; display: none; border: 2px solid #bdbdbd; position: relative; }
+    .timer-bar { height: 100%; background: #4caf50; width: 100%; transition: width 0.1s linear, background-color 0.3s; }
+    .timer-text { position: absolute; width: 100%; text-align: center; font-weight: bold; font-size: 2.2vh; color: #333; line-height: 3vh; z-index: 2; }
+
+    .card-area { flex: 1; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; }
+    .quiz-text-container { display: flex; align-items: center; justify-content: center; gap: 3vw; width: 100%; }
+    .quiz-text { font-size: 20vh; font-weight: bold; font-family: monospace; line-height: 1; white-space: nowrap; }
+    .btn-audio { background: #cfd8dc; border: none; font-size: 5vh; border-radius: 50%; cursor: pointer; width: 8vh; height: 8vh; display: flex; align-items: center; justify-content: center; }
+
+    .hint-container { width: 100%; background: #fff9c4; border: 4px dashed #ffb300; border-radius: 12px; padding: 1vh 2vw; min-height: 10vh; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 2.5vh; font-weight: bold; line-height: 1.3; overflow-y: auto; flex: 0 0 auto; visibility: hidden; }
+    .hint-visual { letter-spacing: 6px; margin-top: 0.5vh; font-size: 3vh; }
+
+    .control-container { display: flex; justify-content: space-between; width: 100%; flex: 0 0 auto; margin-bottom: 1vh; }
+    .btn-control { background-color: #78909c; color: white; border: none; padding: 1vh 3vw; font-size: 2.5vh; font-weight: bold; border-radius: 8px; cursor: pointer; }
+    .btn-control.hint-btn { background-color: #fbc02d; color: #333; }
+
+    .options-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2vw; width: 100%; flex: 0 0 20vh; }
+    .btn-option { background-color: #ffffff; border: 5px solid #1565C0; color: #1565C0; font-size: 10vh; font-weight: bold; border-radius: 20px; cursor: pointer; box-shadow: 0 6px #1565C0; display: flex; align-items: center; justify-content: center; line-height: 1; }
+    .btn-option:active { transform: translateY(6px); box-shadow: 0 0px #1565C0; }
+
+    /* フィードバック */
+    .feedback-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(255, 255, 255, 0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 15px; z-index: 10; }
+    .feedback-mark { font-size: 30vh; font-weight: bold; line-height: 1; }
+    .feedback-mark.correct { color: #ff8f00; }
+    .feedback-mark.wrong { color: #1565C0; }
+    .feedback-ans-text { font-size: 5vh; margin-top: 1vh; font-weight: bold; }
+    .btn-next { background-color: #ff8f00; color: white; border: none; padding: 1.5vh 5vw; font-size: 4vh; font-weight: bold; border-radius: 15px; cursor: pointer; margin-top: 2vh; box-shadow: 0 6px #b36200; }
+    .btn-next:active { transform: translateY(6px); box-shadow: 0 0px #b36200; }
+
+    /* 結果画面 */
+    .result-box { background: white; border: 5px solid #1565C0; border-radius: 20px; padding: 3vh; width: 95%; max-width: 800px; text-align: center; display: flex; flex-direction: column; gap: 2vh; margin-bottom: 2vh; }
+    .score-text { font-size: 6vh; font-weight: bold; color: #ff8f00; }
+    .result-stats-text { font-size: 3vh; line-height: 1.4; white-space: pre-line; }
+    .btn-result { background-color: #1565C0; color: white; border: none; padding: 1.5vh; font-size: 2.8vh; font-weight: bold; border-radius: 12px; cursor: pointer; }
+    .btn-result.orange { background-color: #ff8f00; }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1 id="header-title">さんすうカード</h1>
+    <div class="header-buttons">
+      <button class="btn-header hidden" id="btn-home" onclick="goHome()">おうち</button>
+      <button class="btn-header" id="btn-fullscreen" onclick="toggleFullscreen()">おおきく</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="screen-mode" class="screen active">
+      <h2>どの モードで あそびますか？</h2>
+      <div class="grid-col-1">
+        <button class="btn-large" onclick="selectMainMode('じゅぎょう')">
+          🏫 じゅぎょう モード<span class="btn-sub-text">じかんを きにせず じっくり かんがえる</span>
+        </button>
+        <button class="btn-large orange" onclick="selectMainMode('れんしゅう')">
+          🎮 れんしゅう モード<span class="btn-sub-text">コンボを つなげて キャラを しんか させる</span>
+        </button>
+        <button class="btn-large red" onclick="showTimeAttackRules()">
+          ⏱️ タイムアタック モード<span class="btn-sub-text">じかん せいげん で げんかいに ちょうせん！</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="screen-ta-rule" class="screen">
+      <h2>タイムアタックの ルール</h2>
+      <div class="ta-rule-container">
+        <div class="ta-section">
+          <h3>💣 1もん 〇びょう (はやおし)</h3>
+          <div class="ta-btn-group">
+            <button class="btn-time" onclick="setTaRule('per_question', 1)">1びょう</button>
+            <button class="btn-time" onclick="setTaRule('per_question', 2)">2びょう</button>
+            <button class="btn-time" onclick="setTaRule('per_question', 3)">3びょう</button>
+            <button class="btn-time" onclick="setTaRule('per_question', 4)">4びょう</button>
+            <button class="btn-time" onclick="setTaRule('per_question', 5)">5びょう</button>
+          </div>
+        </div>
+        <div class="ta-section">
+          <h3>⏱️ ぜんぶの もんだいを 〇びょうで</h3>
+          <div class="ta-btn-group">
+            <button class="btn-time" onclick="setTaRule('total', 30)">30びょう</button>
+            <button class="btn-time" onclick="setTaRule('total', 60)">60びょう</button>
+            <button class="btn-time" onclick="setTaRule('total', 120)">120びょう</button>
+          </div>
+        </div>
+        <div class="ta-section">
+          <h3>🔥 〇びょうで なんもん できる？ (エンドレス)</h3>
+          <div class="ta-btn-group">
+            <button class="btn-time" style="border-color:#e53935; color:#e53935;" onclick="setTaRule('endless', 30)">30びょう</button>
+            <button class="btn-time" style="border-color:#e53935; color:#e53935;" onclick="setTaRule('endless', 60)">60びょう</button>
+            <button class="btn-time" style="border-color:#e53935; color:#e53935;" onclick="setTaRule('endless', 120)">120びょう</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="screen-course" class="screen">
+      <div class="q-count-settings" id="q-count-ui">
+        <span>もんだいすう:</span>
+        <button class="btn-q-count selected" onclick="setQuestionCount(10, this)">10もん</button>
+        <button class="btn-q-count" onclick="setQuestionCount(15, this)">15もん</button>
+        <button class="btn-q-count" onclick="setQuestionCount(20, this)">20もん</button>
+        <button class="btn-q-count" onclick="setQuestionCount(30, this)">30もん</button>
+      </div>
+      <h2>どの コースを やりますか？</h2>
+      <div class="grid-col-1">
+        <button class="btn-large" onclick="startCourse('tashizan1')">➕ たしざん (1) くりあがり なし</button>
+        <button class="btn-large" onclick="startCourse('tashizan2')">➕ たしざん (2) くりあがり あり</button>
+        <button class="btn-large orange" onclick="startCourse('hikizan1')">➖ ひきざん (1) くりさがり なし</button>
+        <button class="btn-large orange" onclick="startCourse('hikizan2')">➖ ひきざん (2) くりさがり あり</button>
+        <button class="btn-large" style="border-color:#7e57c2; color:#7e57c2;" onclick="startCourse('mix')">🌟 ぜんぶ ミックス</button>
+      </div>
+    </div>
+
+    <div id="screen-play" class="screen">
+      <div class="status-bar">
+        <div id="progress-text">もんだい 1</div>
+        <div class="character-box" id="char-box"><span class="char-emoji" id="char-emoji">🐣</span><span id="char-status">ひよこ</span></div>
+        <div class="combo-box" id="combo-box">0 れんぞく！</div>
+      </div>
+
+      <div class="timer-container" id="timer-ui">
+        <div class="timer-text" id="timer-text"></div>
+        <div class="timer-bar" id="timer-bar"></div>
+      </div>
+
+      <div class="card-area">
+        <div class="quiz-text-container">
+          <div class="quiz-text" id="quiz-question">5 + 3 =</div>
+          <button class="btn-audio" onclick="speakQuestion()">🔊</button>
+        </div>
+        <div class="hint-container" id="hint-area"><div id="hint-text"></div><div class="hint-visual" id="hint-visual"></div></div>
+        
+        <div class="feedback-overlay hidden" id="feedback-overlay">
+          <div class="feedback-mark" id="feedback-mark">〇</div>
+          <div class="feedback-ans-text" id="feedback-ans-display"></div>
+          <button class="btn-next" id="btn-next" onclick="nextQuestion()">つぎへ (→)</button>
+        </div>
+      </div>
+
+      <div class="control-container">
+        <button class="btn-control hint-btn" id="btn-hint-toggle" onclick="toggleHint()">💡 ヒント</button>
+        <button class="btn-control" onclick="passQuestion()">とばす</button>
+      </div>
+
+      <div class="options-container" id="options-container"></div>
+    </div>
+
+    <div id="screen-result" class="screen">
+      <h2 id="result-title">さいごまで がんばりました！</h2>
+      <div class="result-box">
+        <div class="score-text" id="result-score">100 てん</div>
+        <div class="result-stats-text" id="result-stats"></div>
+        <p id="result-comment" style="color:#d84315; font-weight:bold; font-size: 3.5vh;"></p>
+        <div style="display:flex; flex-direction:column; gap:2vh; margin-top:2vh;">
+          <button class="btn-result orange hidden" id="btn-retry" onclick="startRetryLoop()">❌ まちがえた もんだいを やりなおす</button>
+          <button class="btn-result" style="background-color:#78909c;" onclick="goHome()">🏠 はじめに もどる</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    /* =======================================================
+       問題データの自動生成システム
+       ======================================================= */
+    const COURSE_DATA = {
+      tashizan1: { title: "たしざん (1)", questions: [] },
+      tashizan2: { title: "たしざん (2)", questions: [] },
+      hikizan1:  { title: "ひきざん (1)", questions: [] },
+      hikizan2:  { title: "ひきざん (2)", questions: [] }
+    };
+
+    function makeOptions(ans, min, max) {
+      const opts = new Set([ans]);
+      while (opts.size < 4) {
+        let offset = Math.floor(Math.random() * 7) - 3;
+        let val = ans + offset;
+        if (val >= min && val <= max) opts.add(val);
+      }
+      return Array.from(opts);
+    }
+
+    function initQuestionBank() {
+      // 1. たしざん (1) くりあがりなし
+      for (let a = 1; a <= 9; a++) {
+        for (let b = 1; b <= 9; b++) {
+          if (a + b <= 10) {
+            COURSE_DATA.tashizan1.questions.push({
+              q: `${a} + ${b}`, a: a + b, opt: makeOptions(a + b, 1, 10),
+              ht: `${a} のあとに ${b} つ かぞえるよ`,
+              hv: "〇".repeat(a) + " ＋ " + "〇".repeat(b)
+            });
+          }
+        }
+      }
+
+      // 2. たしざん (2) くりあがりあり
+      for (let a = 1; a <= 9; a++) {
+        for (let b = 1; b <= 9; b++) {
+          if (a + b >= 11) {
+            let needFor10 = 10 - a;
+            let remainder = b - needFor10;
+            COURSE_DATA.tashizan2.questions.push({
+              q: `${a} + ${b}`, a: a + b, opt: makeOptions(a + b, 10, 20),
+              ht: `うしろの ${b} を ${needFor10} と ${remainder} に わけて、10 のまとまりを つくろう`,
+              hv: `${a} ＋ (${needFor10} と ${remainder}) ➔ 10 と ${remainder}`
+            });
+          }
+        }
+      }
+
+      // 3. ひきざん (1) くりさがりなし
+      for (let a = 1; a <= 10; a++) {
+        for (let b = 1; b <= a; b++) {
+          COURSE_DATA.hikizan1.questions.push({
+            q: `${a} - ${b}`, a: a - b, opt: makeOptions(a - b, 0, 10),
+            ht: `${a} から ${b} つ のぞくよ`,
+            hv: "〇".repeat(a - b) + "<s>〇</s>".repeat(b)
+          });
+        }
+      }
+
+      // 4. ひきざん (2) くりさがりあり
+      for (let a = 11; a <= 18; a++) {
+        for (let b = 1; b <= 9; b++) {
+          let aOnes = a % 10;
+          if (aOnes < b && (a - b) <= 9) {
+            let from10 = 10 - b;
+            COURSE_DATA.hikizan2.questions.push({
+              q: `${a} - ${b}`, a: a - b, opt: makeOptions(a - b, 0, 10),
+              ht: `10 から ${b} を ひくと ${from10}。それに 1のくらい の ${aOnes} を たそう`,
+              hv: `(10 と ${aOnes}) － ${b} ➔ ${from10} と ${aOnes}`
+            });
+          }
+        }
+      }
+    }
+
+    initQuestionBank();
+
+    /* =======================================================
+       ゲーム進行システム
+       ======================================================= */
+    let currentMode = ""; 
+    let taRuleType = "";  
+    let taLimitSec = 0;
+    let maxQuestions = 10;
+    
+    let questionList = []; 
+    let currentIndex = 0;
+    let scoreCorrect = 0;
+    let currentCombo = 0;
+    let wrongList = [];    
+    let isRetryLoop = false; 
+
+    let timerInterval = null;
+    let timeLeftMs = 0;
+    let timeTotalMs = 0;
+    let lastTime = 0;
+
+    const CHARACTERS = [
+      { min: 0, emoji: "🐣", name: "ひよこ" }, { min: 3, emoji: "🐥", name: "はねた ひよこ" },
+      { min: 6, emoji: "🐔", name: "にわとり" }, { min: 10, emoji: "🦅", name: "タカ" }, { min: 15, emoji: "🐉", name: "ドラゴン" }
+    ];
+
+    function playAudioTone(type) {
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        if (type === 'correct') {
+          let osc1 = ctx.createOscillator(); let gain1 = ctx.createGain();
+          osc1.type = 'sine'; osc1.frequency.setValueAtTime(660, ctx.currentTime);
+          gain1.gain.setValueAtTime(0.2, ctx.currentTime); gain1.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
+          osc1.connect(gain1); gain1.connect(ctx.destination); osc1.start(); osc1.stop(ctx.currentTime + 0.12);
+          let osc2 = ctx.createOscillator(); let gain2 = ctx.createGain();
+          osc2.type = 'sine'; osc2.frequency.setValueAtTime(880, ctx.currentTime + 0.12);
+          gain2.gain.setValueAtTime(0.2, ctx.currentTime + 0.12); gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+          osc2.connect(gain2); gain2.connect(ctx.destination); osc2.start(ctx.currentTime + 0.12); osc2.stop(ctx.currentTime + 0.4);
+        } else if (type === 'wrong') {
+          let osc = ctx.createOscillator(); let gain = ctx.createGain();
+          osc.type = 'sawtooth'; osc.frequency.setValueAtTime(140, ctx.currentTime);
+          gain.gain.setValueAtTime(0.15, ctx.currentTime); gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+          osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.35);
+        }
+      } catch (e) {}
+    }
+
+    function showScreen(screenId) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(screenId).classList.add('active');
+      document.getElementById('btn-home').classList.toggle('hidden', screenId === 'screen-mode');
+    }
+
+    function goHome() {
+      clearTimer();
+      currentMode = ""; taRuleType = "";
+      document.getElementById('header-title').innerText = "さんすうカード";
+      showScreen('screen-mode');
+    }
+
+    function selectMainMode(mode) {
+      currentMode = mode;
+      document.getElementById('header-title').innerText = "さんすうカード (" + mode + ")";
+      document.getElementById('q-count-ui').classList.remove('hidden');
+      showScreen('screen-course');
+    }
+
+    function showTimeAttackRules() {
+      currentMode = 'タイムアタック';
+      document.getElementById('header-title').innerText = "タイムアタック モード";
+      showScreen('screen-ta-rule');
+    }
+
+    function setTaRule(type, limit) {
+      taRuleType = type;
+      taLimitSec = limit;
+      document.getElementById('q-count-ui').classList.toggle('hidden', type === 'endless');
+      showScreen('screen-course');
+    }
+
+    function setQuestionCount(num, btnElement) {
+      maxQuestions = num;
+      document.querySelectorAll('.btn-q-count').forEach(btn => btn.classList.remove('selected'));
+      btnElement.classList.add('selected');
+    }
+
+    function startCourse(courseKey) {
+      isRetryLoop = false; wrongList = []; scoreCorrect = 0; currentCombo = 0;
+      let baseQuestions = [];
+      if (courseKey === 'mix') {
+        for (let key in COURSE_DATA) baseQuestions = baseQuestions.concat(COURSE_DATA[key].questions);
+      } else {
+        baseQuestions = [...COURSE_DATA[courseKey].questions];
+      }
+
+      shuffleArray(baseQuestions);
+
+      let targetCount = (taRuleType === 'endless') ? 999 : Math.min(maxQuestions, baseQuestions.length);
+      questionList = baseQuestions.slice(0, targetCount);
+
+      currentIndex = 0;
+
+      if (currentMode === 'タイムアタック' && (taRuleType === 'total' || taRuleType === 'endless')) {
+        startTimer(taLimitSec);
+      }
+
+      setupPlayScreen();
+    }
+
+    function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+
+    function setupPlayScreen() {
+      showScreen('screen-play');
+      document.getElementById('feedback-overlay').classList.add('hidden');
+      document.getElementById('hint-area').style.visibility = 'hidden';
+
+      const charBox = document.getElementById('char-box');
+      const comboBox = document.getElementById('combo-box');
+      const timerUi = document.getElementById('timer-ui');
+
+      if (currentMode === 'じゅぎょう') {
+        charBox.classList.add('hidden'); comboBox.classList.add('hidden'); timerUi.style.display = 'none';
+      } else if (currentMode === 'れんしゅう') {
+        charBox.classList.remove('hidden'); comboBox.classList.remove('hidden'); timerUi.style.display = 'none';
+        updateCharacterAndCombo();
+      } else if (currentMode === 'タイムアタック') {
+        charBox.classList.add('hidden'); comboBox.classList.remove('hidden'); timerUi.style.display = 'block';
+        updateCharacterAndCombo();
+        if (taRuleType === 'per_question' && !isRetryLoop) {
+          startTimer(taLimitSec);
+        } else if (isRetryLoop) {
+          timerUi.style.display = 'none';
+        }
+      }
+
+      const currentQ = questionList[currentIndex];
+      const totalCount = questionList.length;
+      let progressStr = (isRetryLoop ? "やりなおし " : "もんだい ") + (currentIndex + 1);
+      if (taRuleType !== 'endless' || isRetryLoop) progressStr += " / " + totalCount;
+      document.getElementById('progress-text').innerText = progressStr;
+
+      document.getElementById('quiz-question').innerText = currentQ.q + " =";
+      document.getElementById('hint-text').innerText = currentQ.ht;
+      document.getElementById('hint-visual').innerHTML = currentQ.hv;
+
+      const optContainer = document.getElementById('options-container');
+      optContainer.innerHTML = "";
+      let opts = [...currentQ.opt];
+      shuffleArray(opts);
+      opts.forEach(val => {
+        const btn = document.createElement('button');
+        btn.className = "btn-option"; btn.innerText = val;
+        btn.onclick = () => checkAnswer(val);
+        optContainer.appendChild(btn);
+      });
+    }
+
+    function startTimer(sec) {
+      clearTimer();
+      timeTotalMs = sec * 1000;
+      timeLeftMs = timeTotalMs;
+      lastTime = performance.now();
+      updateTimerUI();
+      timerInterval = requestAnimationFrame(timerTick);
+    }
+    
+    function timerTick(currentTime) {
+      let delta = currentTime - lastTime;
+      lastTime = currentTime;
+      timeLeftMs -= delta;
+      
+      if (timeLeftMs <= 0) {
+        timeLeftMs = 0;
+        updateTimerUI();
+        handleTimeUp();
+      } else {
+        updateTimerUI();
+        timerInterval = requestAnimationFrame(timerTick);
+      }
+    }
+
+    function updateTimerUI() {
+      const bar = document.getElementById('timer-bar');
+      const txt = document.getElementById('timer-text');
+      let pct = (timeLeftMs / timeTotalMs) * 100;
+      bar.style.width = pct + "%";
+      
+      let secLeft = Math.ceil(timeLeftMs / 1000);
+      txt.innerText = "⏱️ " + secLeft + " びょう";
+      
+      if (pct > 50) bar.style.backgroundColor = "#4caf50";
+      else if (pct > 20) bar.style.backgroundColor = "#ff9800";
+      else bar.style.backgroundColor = "#f44336";
+    }
+
+    function clearTimer() {
+      if (timerInterval) cancelAnimationFrame(timerInterval);
+      timerInterval = null;
+    }
+
+    function handleTimeUp() {
+      if (taRuleType === 'per_question') {
+        checkAnswer(-999);
+      } else {
+        showResultScreen(true);
+      }
+    }
+
+    function speakQuestion() {
+      const q = questionList[currentIndex]; if (!q) return;
+      let t = q.q.replace("+", " たす ").replace("-", " ひく ") + " は ？";
+      const u = new SpeechSynthesisUtterance(t); u.lang = "ja-JP"; u.rate = 1.0;
+      window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+    }
+
+    function toggleHint() {
+      const h = document.getElementById('hint-area'); const b = document.getElementById('btn-hint-toggle');
+      if (h.style.visibility === 'hidden') { h.style.visibility = 'visible'; b.innerText = "👀 かくす"; }
+      else { h.style.visibility = 'hidden'; b.innerText = "💡 ヒント"; }
+    }
+
+    function passQuestion() {
+      const q = questionList[currentIndex];
+      if (!wrongList.includes(q)) wrongList.push(q);
+      currentCombo = 0;
+      if (taRuleType === 'per_question') clearTimer();
+      nextQuestionDirect();
+    }
+
+    function updateCharacterAndCombo() {
+      document.getElementById('combo-box').innerText = currentCombo + " れんぞく！";
+      let char = CHARACTERS[0];
+      for (let i = CHARACTERS.length - 1; i >= 0; i--) {
+        if (currentCombo >= CHARACTERS[i].min) { char = CHARACTERS[i]; break; }
+      }
+      document.getElementById('char-emoji').innerText = char.emoji;
+      document.getElementById('char-status').innerText = char.name;
+    }
+
+    function checkAnswer(selectedVal) {
+      if (taRuleType === 'per_question') clearTimer();
+
+      const q = questionList[currentIndex];
+      const isCorrect = (selectedVal === q.a);
+      const mark = document.getElementById('feedback-mark');
+      const ansDisplay = document.getElementById('feedback-ans-display');
+      const btnNext = document.getElementById('btn-next');
+
+      document.getElementById('feedback-overlay').classList.remove('hidden');
+
+      if (isCorrect) {
+        mark.innerText = "〇"; mark.className = "feedback-mark correct";
+        ansDisplay.innerText = "せいかい！";
+        if (!isRetryLoop) scoreCorrect++;
+        currentCombo++;
+        playAudioTone('correct');
+
+        if (currentMode === 'タイムアタック' && !isRetryLoop) {
+          btnNext.style.display = 'none';
+          setTimeout(() => { btnNext.style.display = 'block'; nextQuestion(); }, 500);
+        } else {
+          btnNext.style.display = 'block';
+          btnNext.focus();
+        }
+      } else {
+        mark.innerText = "×"; mark.className = "feedback-mark wrong";
+        ansDisplay.innerText = selectedVal === -999 ? "タイムアップ！ こたえは " + q.a : "おしい！ こたえは " + q.a;
+        currentCombo = 0;
+        if (!wrongList.includes(q)) wrongList.push(q);
+        document.getElementById('hint-area').style.visibility = 'visible';
+        playAudioTone('wrong');
+        btnNext.style.display = 'block';
+        btnNext.focus();
+      }
+    }
+
+    function nextQuestion() {
+      document.getElementById('feedback-overlay').classList.add('hidden');
+      nextQuestionDirect();
+    }
+
+    function nextQuestionDirect() {
+      currentIndex++;
+      if (currentIndex < questionList.length) {
+        setupPlayScreen();
+      } else {
+        clearTimer();
+        showResultScreen(false);
+      }
+    }
+
+    function showResultScreen(isTimeUpOut) {
+      clearTimer();
+      showScreen('screen-result');
+      
+      const totalCount = questionList.length;
+      const scoreText = document.getElementById('result-score');
+      const statsText = document.getElementById('result-stats');
+      const commentText = document.getElementById('result-comment');
+      const retryBtn = document.getElementById('btn-retry');
+      const title = document.getElementById('result-title');
+
+      if (isRetryLoop) {
+        title.innerText = "やりなおし しゅうりょう！";
+        if (wrongList.length === 0) {
+          scoreText.innerText = "💯 パーフェクト！";
+          statsText.innerText = "まちがえた もんだいも ぜんぶ クリア！";
+          commentText.innerText = "さいごまで あきらめずに えらい！";
+          retryBtn.classList.add('hidden');
+        } else {
+          scoreText.innerText = "おつかれさま！";
+          statsText.innerText = "のこり: " + wrongList.length + "もん";
+          commentText.innerText = "もういちど チャレンジ してみよう！";
+          retryBtn.classList.remove('hidden');
+        }
+        return;
+      }
+
+      let rate = Math.round((scoreCorrect / currentIndex) * 100) || 0;
+      
+      if (currentMode === 'タイムアタック') {
+        if (taRuleType === 'endless') {
+          title.innerText = "🔥 タイムアップ！";
+          scoreText.innerText = scoreCorrect + "もん せいかい！";
+          statsText.innerText = "あそんだ じかん: " + taLimitSec + "びょう\nさいだい コンボ: " + currentCombo;
+          commentText.innerText = "すごい スピード だったね！";
+        } else if (taRuleType === 'total') {
+          if (isTimeUpOut) {
+            title.innerText = "⏱️ タイムアップ！";
+            scoreText.innerText = scoreCorrect + "もん クリア";
+            statsText.innerText = totalCount + "もん のうち、じかん内に できた かずだよ";
+            commentText.innerText = "つぎは ぜんぶ クリアを めざそう！";
+          } else {
+            title.innerText = "🌟 ぜんぶ クリア！";
+            scoreText.innerText = "クリアタイム: " + (taLimitSec - Math.ceil(timeLeftMs/1000)) + "びょう";
+            statsText.innerText = totalCount + "もん ぜんぶ とけたよ！\n(のこり じかん: " + Math.ceil(timeLeftMs/1000) + "びょう)";
+            commentText.innerText = "すばらしい はやさだね！";
+          }
+        } else {
+          title.innerText = "💣 はやおし しゅうりょう！";
+          scoreText.innerText = scoreCorrect + "もん せいかい";
+          statsText.innerText = totalCount + "もん のうち、じかん内に せいかい できた かずだよ";
+          commentText.innerText = "ドキドキ したね！ よく がんばった！";
+        }
+      } else {
+        title.innerText = "さいごまで がんばりました！";
+        scoreText.innerText = rate + " てん！";
+        statsText.innerText = totalCount + "もん のうち " + scoreCorrect + "もん せいかい！";
+        if (rate === 100) {
+          commentText.innerText = "すごすぎる！ さんすう はかせ だね！🌟";
+          retryBtn.classList.add('hidden');
+        } else {
+          commentText.innerText = "まちがえた もんだいを やりなおそう！";
+        }
+      }
+
+      if (wrongList.length > 0 && taRuleType !== 'endless') {
+        retryBtn.classList.remove('hidden');
+      } else {
+        retryBtn.classList.add('hidden');
+      }
+    }
+
+    function startRetryLoop() {
+      if (wrongList.length === 0) return;
+      questionList = [...wrongList]; wrongList = [];
+      currentIndex = 0; scoreCorrect = 0; isRetryLoop = true;
+      setupPlayScreen();
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) { document.documentElement.requestFullscreen().then(()=>document.getElementById('btn-fullscreen').innerText="ちいさく").catch(e=>{});
+      } else { document.exitFullscreen(); document.getElementById('btn-fullscreen').innerText="おおきく"; }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      const p = document.getElementById('screen-play');
+      if (!p.classList.contains('active')) return;
+      const o = document.getElementById('feedback-overlay');
+      if (!o.classList.contains('hidden')) {
+        if (e.key === 'ArrowRight' || e.key === 'Enter') { nextQuestion(); e.preventDefault(); }
+      } else {
+        if (['1', '2', '3', '4'].includes(e.key)) {
+          const idx = parseInt(e.key) - 1;
+          const opts = document.getElementById('options-container').children;
+          if (opts[idx]) { opts[idx].click(); e.preventDefault(); }
+        }
+        if (e.key === 'ArrowRight') { passQuestion(); e.preventDefault(); }
+      }
+    });
+  </script>
+</body>
+</html>
